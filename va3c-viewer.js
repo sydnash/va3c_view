@@ -15,7 +15,7 @@
 	var pi = Math.PI, pi05 = pi * 0.5, pi2 = pi + pi;
 	var d2r = pi / 180, r2d = 180 / pi;  // degrees / radians
 
-	var projector;
+	//var projector;
 	var targetList = [];
 
 	function init(fname) {
@@ -25,21 +25,21 @@
         lastObjectMaterial = -1;
         lastObjectID = -1;
 
-		document.body.style.cssText = 'font: 600 12pt monospace; margin: 0; overflow: hidden' ;
+		//document.body.style.cssText = 'font: 600 12pt monospace; margin: 0; overflow: hidden' ;
 
-		VA3C.info = document.body.appendChild( document.createElement( 'div' ) );
+		//VA3C.info = document.body.appendChild( document.createElement( 'div' ) );
 
-		VA3C.info.style.cssText = 'background-color: #ccc; left: 20px; opacity: 0.85; position: absolute; top: 35px; ';
-		VA3C.info.innerHTML = '<h1>' + document.title + '</h1>' +
-			'<div id=msg style=font-size:10pt;padding:8px; ></div>';
+		//VA3C.info.style.cssText = 'background-color: #ccc; left: 20px; opacity: 0.85; position: absolute; top: 35px; ';
+		//VA3C.info.innerHTML = '<h1>' + document.title + '</h1>' +
+		//	'<div id=msg style=font-size:10pt;padding:8px; ></div>';
 
 		VA3C.stats = new Stats();
 		VA3C.stats.domElement.style.cssText = 'bottom: 0; position: absolute; left: 0; zIndex: 100; ';
-		document.body.appendChild( VA3C.stats.domElement );
+		//document.body.appendChild( VA3C.stats.domElement );
 
 		VA3C.renderer = new THREE.WebGLRenderer( { alpha: 1, antialias: true, clearColor: 0xffffff }  );
 		VA3C.renderer.setSize( window.innerWidth, window.innerHeight );
-		VA3C.renderer.shadowMapEnabled = true;
+		VA3C.renderer.shadowMap.enabled = true
 		document.body.appendChild( VA3C.renderer.domElement );
 		VA3C.scene = new THREE.Scene();
 
@@ -47,7 +47,7 @@
 		VA3C.camera.position.set( 15000, 15000, 15000 );
 		VA3C.controls = new THREE.OrbitControls( VA3C.camera, VA3C.renderer.domElement );
 
-		projector = new THREE.Projector();
+		//projector = new THREE.Projector();
 		document.addEventListener( 'click', clickHandler, false );
 
 		loadJS( fname );
@@ -105,10 +105,10 @@
 
             light = new THREE.DirectionalLight( 0xffffff, 1 );
 // (year, month, day, hour, minutes, sec, lat, long)
-			latlon = sunPosition( 2014, month.value, day.value, hour.value, 60, 0, latlong[0], latlong[1]  );
+			//latlon = sunPosition( 2014, month.value, day.value, hour.value, 60, 0, latlong[0], latlong[1]  );
 // console.log ( latlon );
-			var pos = convertPosition(  latlon[0], latlon[1], 10000 );
-		// var pos = convertPosition(  43, -75, 10000 );
+			//var pos = convertPosition(  latlon[0], latlon[1], 10000 );
+		 var pos = convertPosition(  43, -75, 10000 );
 
             light.position = pos;
             light.castShadow = true;
@@ -326,13 +326,16 @@
 
 
         var vector = new THREE.Vector3( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1, 0.5 );
-        projector.unprojectVector( vector, VA3C.camera );
+        //projector.unprojectVector( vector, VA3C.camera );
 
-        var raycaster = new THREE.Raycaster( VA3C.camera.position, vector.sub( VA3C.camera.position ).normalize() );
+        var mouse = new THREE.Vector2(( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1);
+        var raycaster = new THREE.Raycaster();//( VA3C.camera.position, vector.sub( VA3C.camera.position ).normalize() );
+        raycaster.setFromCamera(mouse,VA3C.camera);
         //var raycaster = new THREE.Raycaster( VA3C.camera.position, vector.sub( ).normalize() );
 
-        var intersects = raycaster.intersectObjects( targetList );
+        //var intersects = raycaster.intersectObjects( targetList );
         //var intersects = raycaster.intersectObjects( VA3C.scene.children.geometry );
+        var intersects = raycaster.intersectObjects(targetList)
 
         if ( intersects.length > 0 ) {
 
