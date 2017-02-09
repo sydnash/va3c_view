@@ -43,8 +43,8 @@
 		document.body.appendChild( VA3C.renderer.domElement );
 		VA3C.scene = new THREE.Scene();
 
-		VA3C.camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 100000 );
-		VA3C.camera.position.set( 15000, 15000, 15000 );
+		VA3C.camera = new THREE.PerspectiveCamera( 100, window.innerWidth / window.innerHeight, 1, 10000000 );
+		VA3C.camera.position.set( 5000, 5000, 5000 );
 		VA3C.controls = new THREE.OrbitControls( VA3C.camera, VA3C.renderer.domElement );
 
 		//projector = new THREE.Projector();
@@ -79,6 +79,77 @@
 // lights
 		VA3C.scene.add( new THREE.AmbientLight( 0x444444 ) );
 
+
+        var aabbMin = new THREE.Vector3();
+        var aabbMax = new THREE.Vector3();
+        var radius = 0;
+        var ttt = false;
+        //loop over the meshes in the platypus scene
+        for (var m = 0; m < VA3C.scene.children.length; m++)
+        {
+            try {
+                //if mesh,
+                if(VA3C.scene.children[m].hasOwnProperty("geometry"))
+                {
+                    if (!ttt) {
+                        aabbMin.x = geo.boundingBox.min.x;
+                        aabbMin.y = geo.boundingBox.min.y;
+                        aabbMin.z = geo.boundingBox.min.z;
+                        aabbMax.x = geo.boundingBox.max.x;
+                        aabbMax.y = geo.boundingBox.max.y;
+                        aabbMax.z = geo.boundingBox.max.z;
+                        ttt = true;
+                    }
+                    var geo = VA3C.meshes[m].Three_Meshes.geometry;
+                    geo.computeBoundingBox();
+
+                    aabbMin.x = Math.min(aabbMin.x, geo.boundingBox.min.x);
+                    aabbMin.y = Math.min(aabbMin.y, geo.boundingBox.min.y);
+                    aabbMin.z = Math.min(aabbMin.z, geo.boundingBox.min.z);
+                    aabbMax.x = Math.max(aabbMax.x, geo.boundingBox.max.x);
+                    aabbMax.y = Math.max(aabbMax.y, geo.boundingBox.max.y);
+                    aabbMax.z = Math.max(aabbMax.z, geo.boundingBox.max.z);
+                }
+
+                //if object3d or whatever, figure out how to get a bounding box
+                else{
+                    var obj = VA3C.scene.children[m].children[0].geometry;
+                    obj.computeBoundingBox();
+                    if (!ttt) {
+                        aabbMin.x = obj.boundingBox.min.x;
+                        aabbMin.y = obj.boundingBox.min.y;
+                        aabbMin.z = obj.boundingBox.min.z;
+                        aabbMax.x = obj.boundingBox.max.x;
+                        aabbMax.y = obj.boundingBox.max.y;
+                        aabbMax.z = obj.boundingBox.max.z;
+                        ttt = true;
+                    }
+                    aabbMin.x = Math.min(aabbMin.x, obj.boundingBox.min.x);
+                    aabbMin.y = Math.min(aabbMin.y, obj.boundingBox.min.y);
+                    aabbMin.z = Math.min(aabbMin.z, obj.boundingBox.min.z);
+                    aabbMax.x = Math.max(aabbMax.x, obj.boundingBox.max.x);
+                    aabbMax.y = Math.max(aabbMax.y, obj.boundingBox.max.y);
+                    aabbMax.z = Math.max(aabbMax.z, obj.boundingBox.max.z);
+
+                }
+            } catch (e) {
+                console.log("VA3C zoom extents error in mesh loop: " + e);
+            }
+        }
+
+        // Compute world AABB center
+        var aabbCenter = new THREE.Vector3();
+        aabbCenter.x = (aabbMax.x + aabbMin.x) * 0.5;
+        aabbCenter.y = (aabbMax.y + aabbMin.y) * 0.5;
+        aabbCenter.z = (aabbMax.z + aabbMin.z) * 0.5;
+
+for (var m = 0; m < VA3C.scene.children.length; m++) {
+    VA3C.scene.children[m].translateX(-aabbCenter.x);
+    VA3C.scene.children[m].translateY(-aabbCenter.y);
+    VA3C.scene.children[m].translateZ(-aabbCenter.z);
+}
+
+
 		updateLight();
 
 // axes
@@ -93,7 +164,7 @@
             mesh.position.set( 0, -10, 0 );
             mesh.castShadow = true;
             mesh.receiveShadow = true;
-            VA3C.scene.add( mesh );
+            //VA3C.scene.add( mesh );
 
             //call compute function
             computeNormalsAndFaces();
@@ -275,6 +346,7 @@
     var selMaterial;
 
 	function displayAttributes( obj ) {
+        return
 		msg.innerHTML = '';
 		var arr = Object.keys( obj );
 		for (var i = 0, len = arr.length; i < len; i++) {
@@ -343,8 +415,14 @@
          //console.log(intersects[0].object.userData);
 
          var j =0;
+         var distance = intersects[j].distance
          while(j<intersects.length){
              //FOR MESHES:
+             if (distance < intersects[j].distance) {
+                j++;
+                continue;
+             }
+             distance = intersects[j].distance;
              if(!$.isEmptyObject(intersects[j].object.userData)){
                  console.log(intersects[j].object.userData);
 
@@ -356,7 +434,7 @@
                      {
                          if (VA3C.scene.children[i].id == lastMeshID)
                          {
-                             VA3C.scene.children[i].material = lastMeshMaterial;
+                            VA3C.scene.children[i].material = lastMeshMaterial;
                          }
                      }
                  }
@@ -373,7 +451,7 @@
 
                 displayAttributes( intersects[j].object.userData );
 
-                 break;
+                // break;
              }
              //FOR OBJECT3D
              if(!$.isEmptyObject(intersects[j].object.parent.userData)){
