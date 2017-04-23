@@ -15,6 +15,7 @@
 	var pi = Math.PI, pi05 = pi * 0.5, pi2 = pi + pi;
 	var d2r = pi / 180, r2d = 180 / pi;  // degrees / radians
 
+    var cube
 	//var projector;
 	var targetList = [];
 
@@ -43,12 +44,23 @@
 		document.body.appendChild( VA3C.renderer.domElement );
 		VA3C.scene = new THREE.Scene();
 
-		VA3C.camera = new THREE.PerspectiveCamera( 100, window.innerWidth / window.innerHeight, 1, 10000000 );
+		VA3C.camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000000 );
 		VA3C.camera.position.set( 5000, 5000, 5000 );
-		VA3C.controls = new THREE.OrbitControls( VA3C.camera, VA3C.renderer.domElement );
+		VA3C.controls = new THREE.FirstPersonControls( VA3C.camera, VA3C.renderer.domElement );
+
+        VA3C.cameraLight = new THREE.PointLight(0xffffff, 1, 0)
+        VA3C.scene.add(VA3C.cameraLight)
 
 		//projector = new THREE.Projector();
 		document.addEventListener( 'click', clickHandler, false );
+
+        {
+            var geometry = new THREE.BoxGeometry(500, 500, 500)
+            var material = new THREE.MeshBasicMaterial({color : 0x00ff00 });
+            cube = new THREE.Mesh(geometry, material);
+            cube.position.set(0, 0, 0)
+            VA3C.scene.add(cube)
+            }
 
 		loadJS( fname );
 		//loadJS( VA3C.fname );
@@ -70,12 +82,13 @@
 //     }
 			
 	function loadJS (fname) {
-		if ( VA3C.scene ) VA3C.scene.remove( obj );
 		targetList = [];
 		var loader = new THREE.ObjectLoader();
         loader.load( fname, function( result ){
-			VA3C.scene = result;
+            if ( VA3C.scene ) VA3C.scene.remove( obj );
+			VA3C.scene.add(result)
 
+            VA3C.model = result
 // lights
 		VA3C.scene.add( new THREE.AmbientLight( 0x444444 ) );
 
@@ -85,11 +98,11 @@
         var radius = 0;
         var ttt = false;
         //loop over the meshes in the platypus scene
-        for (var m = 0; m < VA3C.scene.children.length; m++)
+        for (var m = 0; m < VA3C.model.children.length; m++)
         {
             try {
                 //if mesh,
-                if(VA3C.scene.children[m].hasOwnProperty("geometry"))
+                if(VA3C.model.children[m].hasOwnProperty("geometry"))
                 {
                     if (!ttt) {
                         aabbMin.x = geo.boundingBox.min.x;
@@ -113,7 +126,8 @@
 
                 //if object3d or whatever, figure out how to get a bounding box
                 else{
-                    var obj = VA3C.scene.children[m].children[0].geometry;
+                    VA3C.model.children[m].children[0].material.side = THREE.DoubleSide;
+                    var obj = VA3C.model.children[m].children[0].geometry;
                     obj.computeBoundingBox();
                     if (!ttt) {
                         aabbMin.x = obj.boundingBox.min.x;
@@ -143,10 +157,10 @@
         aabbCenter.y = (aabbMax.y + aabbMin.y) * 0.5;
         aabbCenter.z = (aabbMax.z + aabbMin.z) * 0.5;
 
-for (var m = 0; m < VA3C.scene.children.length; m++) {
-    VA3C.scene.children[m].translateX(-aabbCenter.x);
-    VA3C.scene.children[m].translateY(-aabbCenter.y);
-    VA3C.scene.children[m].translateZ(-aabbCenter.z);
+for (var m = 0; m < VA3C.model.children.length; m++) {
+    VA3C.model.children[m].translateX(-aabbCenter.x);
+    VA3C.model.children[m].translateY(-aabbCenter.y);
+    VA3C.model.children[m].translateZ(-aabbCenter.z);
 }
 
 
@@ -168,6 +182,14 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
 
             //call compute function
             computeNormalsAndFaces();
+        },  
+        function ( xhr ) {
+            console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+        },
+
+        // Function called when download errors
+        function ( xhr ) {
+            console.error( 'An error happened' );
         });
 	}
 
@@ -253,11 +275,11 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
         var aabbMax = new THREE.Vector3();
         var radius = 0;
         //loop over the meshes in the platypus scene
-        for (var m = 0; m < VA3C.scene.children.length; m++)
+        for (var m = 0; m < VA3C.model.children.length; m++)
         {
             try {
                 //if mesh,
-                if(VA3C.scene.children[m].hasOwnProperty("geometry"))
+                if(VA3C.model.children[m].hasOwnProperty("geometry"))
                 {
                     var geo = VA3C.meshes[m].Three_Meshes.geometry;
                     geo.computeBoundingBox();
@@ -272,7 +294,7 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
 
                 //if object3d or whatever, figure out how to get a bounding box
                 else{
-                    var obj = VA3C.scene.children[m].children[0].geometry;
+                    var obj = VA3C.model.children[m].children[0].geometry;
                     obj.computeBoundingBox();
 
                     aabbMin.x = Math.min(aabbMin.x, obj.boundingBox.min.x);
@@ -321,22 +343,24 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
 	function animate() {
 		requestAnimationFrame( animate );
 		VA3C.renderer.render( VA3C.scene, VA3C.camera );
-		VA3C.controls.update( );
+		VA3C.controls.update(1);
+        cube.rotation.x += 0.01;
 		VA3C.stats.update();
+        VA3C.cameraLight.position.copy(VA3C.camera.position)
 	}
 
 	function computeNormalsAndFaces() {
-		for(var i=0; i<VA3C.scene.children.length; i++){
-			if( VA3C.scene.children[i].hasOwnProperty("geometry")){
-				VA3C.scene.children[i].geometry.mergeVertices();
-				VA3C.scene.children[i].castShadow = true;
-				VA3C.scene.children[i].geometry.computeFaceNormals();
-                targetList.push( VA3C.scene.children[i] );
+		for(var i=0; i<VA3C.model.children.length; i++){
+			if( VA3C.model.children[i].hasOwnProperty("geometry")){
+				VA3C.model.children[i].geometry.mergeVertices();
+				VA3C.model.children[i].castShadow = true;
+				VA3C.model.children[i].geometry.computeFaceNormals();
+                targetList.push( VA3C.model.children[i] );
 			}
-            if( VA3C.scene.children[i].children.length > 0 ){
-                for (var k=0; k<VA3C.scene.children[i].children.length ; k++){
-                    if(VA3C.scene.children[i].children[k].hasOwnProperty("geometry")){
-                        targetList.push(VA3C.scene.children[i].children[k]);
+            if( VA3C.model.children[i].children.length > 0 ){
+                for (var k=0; k<VA3C.model.children[i].children.length ; k++){
+                    if(VA3C.model.children[i].children[k].hasOwnProperty("geometry")){
+                        targetList.push(VA3C.model.children[i].children[k]);
                     }
                 }
             }
@@ -371,11 +395,11 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
         if(lastMeshMaterial!=-1)
         {
             //reset last material for last lastMeshID
-            for(var i = 0; i < VA3C.scene.children.length;i++)
+            for(var i = 0; i < VA3C.model.children.length;i++)
             {
-                if (VA3C.scene.children[i].id == lastMeshID)
+                if (VA3C.model.children[i].id == lastMeshID)
                 {
-                    VA3C.scene.children[i].material = lastMeshMaterial;
+                    VA3C.model.children[i].material = lastMeshMaterial;
                 }
             }
         }
@@ -383,13 +407,13 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
         if(lastObjectMaterial!=-1)
         {
             //reset last material for last lastObjectID
-            for(var i = 0; i < VA3C.scene.children.length;i++)
+            for(var i = 0; i < VA3C.model.children.length;i++)
             {
-                if (VA3C.scene.children[i].id == lastObjectID)
+                if (VA3C.model.children[i].id == lastObjectID)
                 {
-                    for (var ii = 0; ii < VA3C.scene.children[i].children.length;ii++)
+                    for (var ii = 0; ii < VA3C.model.children[i].children.length;ii++)
                     {
-                        VA3C.scene.children[i].children[ii].material = lastObjectMaterial;
+                        VA3C.model.children[i].children[ii].material = lastObjectMaterial;
                     }
 
                 }
@@ -430,11 +454,11 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
                  if(lastMeshMaterial!=-1)
                  {
                      //reset last material for last lastMeshID
-                     for(var i = 0; i < VA3C.scene.children.length;i++)
+                     for(var i = 0; i < VA3C.model.children.length;i++)
                      {
-                         if (VA3C.scene.children[i].id == lastMeshID)
+                         if (VA3C.model.children[i].id == lastMeshID)
                          {
-                            VA3C.scene.children[i].material = lastMeshMaterial;
+                            VA3C.model.children[i].material = lastMeshMaterial;
                          }
                      }
                  }
@@ -460,13 +484,13 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
                  if(lastObjectMaterial!=-1)
                  {
                      //reset last material for last lastObjectID
-                     for(var i = 0; i < VA3C.scene.children.length;i++)
+                     for(var i = 0; i < VA3C.model.children.length;i++)
                      {
-                         if (VA3C.scene.children[i].id == lastObjectID)
+                         if (VA3C.model.children[i].id == lastObjectID)
                          {
-                             for (var ii = 0; ii < VA3C.scene.children[i].children.length;ii++)
+                             for (var ii = 0; ii < VA3C.model.children[i].children.length;ii++)
                              {
-                                 VA3C.scene.children[i].children[ii].material = lastObjectMaterial;
+                                 VA3C.model.children[i].children[ii].material = lastObjectMaterial;
                              }
 
                          }
@@ -489,6 +513,6 @@ for (var m = 0; m < VA3C.scene.children.length; m++) {
          }
 
         } else {
-			msg.innerHTML = '';
+			//msg.innerHTML = '';
 		}
 	}
